@@ -36,10 +36,6 @@ def main():
 
         pocketsmith.split_transaction(settle_up_transaction, constituent_expenses)
 
-    # get all transactions included in that payment
-    # split the original pocketsmith transaction into those corresponding transactions
-    pass
-
 
 if __name__ == "__main__":
     main()
