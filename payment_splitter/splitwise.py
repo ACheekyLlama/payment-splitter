@@ -7,7 +7,6 @@ from dateutil.parser import isoparse
 from .util import to_decimal
 
 
-# currently only going to work for a group with two people
 class Splitwise:
     def __init__(self, key: str) -> None:
         self._key = key
@@ -35,8 +34,6 @@ class Splitwise:
             raise Exception("Multiple matching payments found.")
 
         [payment] = matching_payments
-
-        print(f"Found matching payment: {payment['id']}")
 
         return payment
 
@@ -111,12 +108,14 @@ class Splitwise:
         return output
 
     def _request(self, url: str, params: dict = {}) -> dict:
+        """Make a get request to the Splitwise API."""
         headers = {"Authorization": f"Bearer {self._key}", "accept": "application/json"}
         response = requests.get(url, headers=headers, params=params)
 
         return response.json()
 
     def _fetch_transactions(self) -> list:
+        """Fetch and return all transactions from the Splitwise API, with caching."""
         if self._transactions is not None:
             return self._transactions
 
@@ -137,6 +136,7 @@ class Splitwise:
         return transactions
 
     def _is_matching(self, payment: dict, amount: Decimal, timestamp: datetime) -> bool:
+        """Check if the given payment matches the given amount and timestamp."""
         payment_date = isoparse(payment["date"])
         time_difference = payment_date - timestamp
         return (to_decimal(payment["cost"]) == amount) and (
@@ -144,15 +144,15 @@ class Splitwise:
         )
 
     def _get_user_balance(self, transaction: dict, user_id: int) -> Decimal:
-        user = self._get_user(transaction["users"], user_id)
-        return to_decimal(user["net_balance"])
-
-    def _get_user(self, users: list, user_id: int) -> dict:
-        matching_users = [user for user in users if user["user_id"] == user_id]
-        [single_user] = matching_users
-        return single_user
+        """Get the net balance change for the given user id from the given transaction."""
+        matching_users = [
+            user for user in transaction["users"] if user["user_id"] == user_id
+        ]
+        [matching_user] = matching_users
+        return to_decimal(matching_user["net_balance"])
 
     def _remove_transaction(self, transactions: list, transaction_id: int) -> None:
+        """Remove the transaction with the given id from the transactions list."""
         transaction_index = next(
             x[0] for x in enumerate(transactions) if x[1]["id"] == transaction_id
         )
