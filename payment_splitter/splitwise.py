@@ -1,18 +1,124 @@
-import json
-import math
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 import requests
+from dateutil.parser import isoparse
+
+from .util import to_decimal
 
 
+# currently only going to work for a group with two people
 class Splitwise:
     def __init__(self, key: str) -> None:
         self._key = key
+        self._transactions = None
 
-    def find_settle_up_transaction(self, amount: float, timestamp: datetime):
-        # get the current user
+    def get_matching_payment(self, amount: Decimal, timestamp: datetime) -> dict:
+        """Get the splitwise payment that matches the given amount and timestamp."""
+        transactions = self._fetch_transactions()
+
+        matching_payments = [
+            x
+            for x in transactions
+            if x["payment"] and self._is_matching(x, amount, timestamp)
+        ]
+
+        if len(matching_payments) == 0:
+            print(amount)
+            print(timestamp)
+            raise Exception("No matching payments found.")
+
+        if len(matching_payments) > 1:
+            print(amount)
+            print(timestamp)
+            print(matching_payments)
+            raise Exception("Multiple matching payments found.")
+
+        [payment] = matching_payments
+
+        print(f"Found matching payment: {payment['id']}")
+
+        return payment
+
+    def get_constituent_expenses(self, payment: dict):
+        """Get a list of the expenses that make up the given payment. Returns them using an intermediate representation of (description, amount)."""
         user = self._request("https://secure.splitwise.com/api/v3.0/get_current_user")
-        user_id = user["id"]
+        user_id = user["user"]["id"]
+
+        transactions = [
+            x
+            for x in self._fetch_transactions()
+            if x["group_id"] == payment["group_id"]
+        ]
+
+        preceding_payments = (
+            x for x in transactions if x["payment"] and (x["date"] < payment["date"])
+        )
+
+        constituent_transactions = []
+        while True:
+            preceding_payment = next(preceding_payments)
+
+            constituent_transactions = [
+                x
+                for x in transactions
+                if preceding_payment["date"] < x["date"] < payment["date"]
+            ]
+
+            transaction_balances = (
+                self._get_user_balance(x, user_id) for x in constituent_transactions
+            )
+            transaction_balance_sum = sum(transaction_balances)
+            payment_balance = self._get_user_balance(payment, user_id)
+
+            if transaction_balance_sum + payment_balance == Decimal("0.00"):
+                print("Transaction totals match.")
+                break
+
+            print(
+                f"Transaction totals don't match, trying next payment: {transaction_balance_sum}, {payment_balance}"
+            )
+
+        included_payments = (x for x in constituent_transactions if x["payment"])
+        for included_payment in included_payments:
+            net_balance = self._get_user_balance(included_payment, user_id)
+
+            # search for the expense that cancels this payment out
+            matching_expenses = (
+                x
+                for x in constituent_transactions
+                if (x["date"] < included_payment["date"])
+                and (
+                    self._get_user_balance(x, user_id) + net_balance == Decimal("0.00")
+                )
+            )
+            [matching_expense] = matching_expenses
+
+            print("Found a matching payment and expense, removing them.")
+
+            # remove the payment and expense
+            self._remove_transaction(constituent_transactions, matching_expense["id"])
+            self._remove_transaction(constituent_transactions, included_payment["id"])
+
+        output = [
+            (x["description"], self._get_user_balance(x, user_id))
+            for x in constituent_transactions
+        ]
+
+        # return those transactions as a list of amounts (positive or negative), and descriptions
+        print(output)
+
+        return output
+
+    def _request(self, url: str, params: dict = {}) -> dict:
+        headers = {"Authorization": f"Bearer {self._key}", "accept": "application/json"}
+        response = requests.get(url, headers=headers, params=params)
+
+        return response.json()
+
+    def _fetch_transactions(self) -> list:
+        if self._transactions is not None:
+            return self._transactions
 
         transactions = []
         offset = 0
@@ -27,65 +133,27 @@ class Splitwise:
             offset += len(transaction_response["expenses"])
             transactions.extend(transaction_response["expenses"])
 
-        payments = [x for x in transactions if x["payment"]]
+        self._transactions = transactions
+        return transactions
 
-        matching_index = self._find_matching_payment(payments, amount, timestamp)
-        matching_payment = payments[matching_index]
-        preceding_payment = payments[matching_index + 1]
-
-        constituent_transactions = [
-            x
-            for x in transactions
-            if preceding_payment["date"] < x["date"] < matching_payment["date"]
-        ]
-
-        transaction_sum = sum(
-            self._get_user(x["users"], user_id)["net_balance"]
-            for x in constituent_transactions
-        )
-        if not math.isclose(transaction_sum + amount, 0.0):
-            print(transaction_sum, amount)
-            raise Exception("Transaction totals don't match.")
-
-        # return those transactions as a list of amounts (positive or negative), and descriptions
-
-    def _request(self, url: str, params: dict = {}) -> dict:
-        headers = {"Authorization": f"Bearer {self._key}", "accept": "application/json"}
-        response = requests.get(url, headers=headers, params=params)
-
-        return response.json()
-
-    def _find_matching_payment(
-        self, payments: list, amount: float, timestamp: datetime
-    ) -> int:
-        """Returns the index of the payment that matches the given amount and timestamp."""
-        matching_indices = [
-            x[0]
-            for x in enumerate(payments)
-            if self._is_matching(x[1], amount, timestamp)
-        ]
-
-        if len(matching_indices) == 0:
-            print(amount)
-            print(timestamp)
-            raise Exception("No matching payments found.")
-
-        if len(matching_indices) > 1:
-            print(amount)
-            print(timestamp)
-            print(matching_indices)
-            raise Exception("Multiple matching payments found.")
-
-        return matching_indices[0]
-
-    def _is_matching(payment: dict, amount: float, timestamp: datetime) -> bool:
-        created_time = datetime.fromisoformat(payment["date"])
-        time_difference = created_time - timestamp
-        return math.isclose(payment["cost"], amount, abs_tol=0.01) and (
-            timedelta(minutes=-30) < time_difference < timedelta(minutes=30)
+    def _is_matching(self, payment: dict, amount: Decimal, timestamp: datetime) -> bool:
+        payment_date = isoparse(payment["date"])
+        time_difference = payment_date - timestamp
+        return (to_decimal(payment["cost"]) == amount) and (
+            timedelta(days=-2) < time_difference < timedelta(days=2)
         )
 
-    def _get_user(users: list, user_id: int) -> dict:
-        matching_users = [user for user in users if user["user_id"]]
-        # TODO: throw exception if multiple matches found
-        return matching_users[0]
+    def _get_user_balance(self, transaction: dict, user_id: int) -> Decimal:
+        user = self._get_user(transaction["users"], user_id)
+        return to_decimal(user["net_balance"])
+
+    def _get_user(self, users: list, user_id: int) -> dict:
+        matching_users = [user for user in users if user["user_id"] == user_id]
+        [single_user] = matching_users
+        return single_user
+
+    def _remove_transaction(self, transactions: list, transaction_id: int) -> None:
+        transaction_index = next(
+            x[0] for x in enumerate(transactions) if x[1]["id"] == transaction_id
+        )
+        transactions.pop(transaction_index)
