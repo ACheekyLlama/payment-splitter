@@ -1,10 +1,16 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
+from typing import TypedDict
 
 import requests
 from dateutil.parser import isoparse
 
 from .util import to_decimal
+
+
+class SwTransaction(TypedDict):
+    group_id: int
+    payment: bool
 
 
 class Splitwise:
@@ -37,8 +43,8 @@ class Splitwise:
 
         return payment
 
-    def get_constituent_expenses(self, payment: dict):
-        """Get a list of the expenses that make up the given payment. Returns them using an intermediate representation of (description, amount)."""
+    def get_constituent_expenses(self, payment: dict) -> list[tuple[str, Decimal]]:
+        """Get a list of the expenses that make up the given payment. Returns them as tuples (description, amount)."""
         user = self._request("https://secure.splitwise.com/api/v3.0/get_current_user")
         user_id = user["user"]["id"]
 

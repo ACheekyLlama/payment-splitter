@@ -19,6 +19,8 @@ class Pocketsmith:
             {"uncategorised": 1, "search": "splitwise"},
         )
 
+        # filter down to only those with the label
+
         print(f"Found {len(splitwise_transactions)} settle-up transactions.")
 
         return splitwise_transactions
