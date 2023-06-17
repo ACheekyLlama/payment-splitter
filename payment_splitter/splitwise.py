@@ -1,3 +1,4 @@
+"""Module for interacting with the Splitwise API."""
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import TypedDict
@@ -14,12 +15,14 @@ class SwTransaction(TypedDict):
 
 
 class Splitwise:
+    """Class for interacting with the Splitwise API."""
+
     def __init__(self, key: str) -> None:
         self._key = key
         self._transactions = None
 
     def get_matching_payment(self, amount: Decimal, timestamp: datetime) -> dict:
-        """Get the splitwise payment that matches the given amount and timestamp."""
+        """Get the Splitwise payment that matches the given amount and timestamp."""
         transactions = self._fetch_transactions()
 
         matching_payments = [

@@ -1,3 +1,4 @@
+"""Main entrypoint module."""
 from datetime import timezone
 
 from dateutil.parser import isoparse

@@ -1,3 +1,4 @@
+"""Module for interacting with the Pocketsmith API."""
 from decimal import Decimal
 
 import requests
