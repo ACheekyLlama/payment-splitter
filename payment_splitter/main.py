@@ -8,16 +8,15 @@ from .splitwise import Splitwise
 from .util import to_decimal
 
 
-def main():
+def main(
+    pocketsmith_key: str,
+    splitwise_key: str,
+    splitwise_groups: list,
+    dry_run: bool = False,
+):
     """Run the payment splitter."""
-    # TODO: use oauth
-    with open("pocketsmith_key.txt", "r") as pocketsmith_key_file:
-        pocketsmith_key = pocketsmith_key_file.read()
-    with open("splitwise_key.txt", "r") as splitwise_key_file:
-        splitwise_key = splitwise_key_file.read()
-
     pocketsmith = Pocketsmith(pocketsmith_key)
-    splitwise = Splitwise(splitwise_key)
+    splitwise = Splitwise(splitwise_key, splitwise_groups)
 
     ps_settle_up_transactions = pocketsmith.get_settle_up_transactions()
 
@@ -29,6 +28,11 @@ def main():
             to_decimal(settle_up_transaction["amount"]),
             isoparse(settle_up_transaction["date"]).replace(tzinfo=timezone.utc),
         )
+
+        if sw_payment is None:
+            print(f"No matching splitwise payment found, skipping.")
+            continue
+
         print(f"Found matching splitwise payment: {sw_payment['id']}")
 
         # log these as debug?
@@ -40,8 +44,6 @@ def main():
         # make type definitions using typeddict
         # could also put some helper methods onto the types for e.g. getting the user balance?
 
-        pocketsmith.split_transaction(settle_up_transaction, constituent_expenses)
-
-
-if __name__ == "__main__":
-    main()
+        pocketsmith.split_transaction(
+            settle_up_transaction, constituent_expenses, dry_run=dry_run
+        )

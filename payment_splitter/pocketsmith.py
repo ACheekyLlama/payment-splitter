@@ -19,7 +19,6 @@ class Pocketsmith:
             f"https://api.pocketsmith.com/v2/users/{user_id}/transactions",
             {"uncategorised": 1, "search": "splitwise"},
         )
-
         # filter down to only those with the label
 
         print(f"Found {len(splitwise_transactions)} settle-up transactions.")
@@ -27,7 +26,10 @@ class Pocketsmith:
         return splitwise_transactions
 
     def split_transaction(
-        self, original_transaction: dict, new_transactions: list[tuple[str, Decimal]]
+        self,
+        original_transaction: dict,
+        new_transactions: list[tuple[str, Decimal]],
+        dry_run: bool = False,
     ) -> None:
         """Split up a pocketsmith transaction, according to the given new_transactions.
 
@@ -48,16 +50,19 @@ class Pocketsmith:
                 }
 
                 print(f"Creating transaction: {ps_new_transaction}")
-                response_transaction = self._post_request(
-                    f"https://api.pocketsmith.com/v2/transaction_accounts/{transaction_account}/transactions",
-                    ps_new_transaction,
-                )
-                created_transaction_ids.append(response_transaction["id"])
 
-            print(f"Deleting original transaction: {original_transaction}")
-            self._delete_request(
-                f"https://api.pocketsmith.com/v2/transactions/{original_transaction['id']}"
-            )
+                if not dry_run:
+                    response_transaction = self._post_request(
+                        f"https://api.pocketsmith.com/v2/transaction_accounts/{transaction_account}/transactions",
+                        ps_new_transaction,
+                    )
+                    created_transaction_ids.append(response_transaction["id"])
+
+            if not dry_run:
+                print(f"Deleting original transaction: {original_transaction}")
+                self._delete_request(
+                    f"https://api.pocketsmith.com/v2/transactions/{original_transaction['id']}"
+                )
         except Exception as e:
             print("Error occurred while creating new transactions.")
             # rollback created transactions
