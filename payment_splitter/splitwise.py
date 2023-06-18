@@ -1,4 +1,5 @@
 """Module for interacting with the Splitwise API."""
+import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -24,9 +25,10 @@ class SwTransaction(BaseModel):
     """Model representing a Splitwise transaction returned by the API."""
 
     id: int
-    group_id: int
+    group_id: int | None
     description: str
     payment: bool
+    cost: str
     date: str
     users: list[SwTransactionUser]
 
@@ -40,6 +42,9 @@ class SwTransaction(BaseModel):
         [matching_user] = matching_users
         return matching_user
 
+    def __str__(self) -> str:
+        return str(self.dict(include={"id", "description", "date", "cost"}))
+
 
 class Splitwise:
     """Class for interacting with the Splitwise API."""
@@ -50,6 +55,9 @@ class Splitwise:
         self._transactions: list[SwTransaction] | None = None
         user = self._request("https://secure.splitwise.com/api/v3.0/get_current_user")
         self._user_id = user["user"]["id"]
+
+        self._logger = logging.getLogger("Splitwise")
+        self._logger.setLevel(logging.INFO)
 
     def get_matching_payment(
         self, amount: Decimal, timestamp: datetime
@@ -79,27 +87,30 @@ class Splitwise:
             if txn.group_id == payment.group_id
         ]
 
-        preceding_payments = iter(
-            sorted(
-                (
-                    txn
-                    for txn in transactions
-                    if txn.payment and (txn.date < payment.date)
-                ),
-                key=lambda x: x.date,
-                reverse=True,
-            )
+        constituent_transactions = self._get_constituent_transactions(
+            transactions, payment
         )
 
-        constituent_transactions = []
-        while True:
-            try:
-                preceding_payment = next(preceding_payments)
-            except StopIteration:
-                raise Exception(
-                    "Could not find the constituent expenses. Check that you have not made any partial payments."
-                )
+        self._remove_included_payments(constituent_transactions)
 
+        expense_tuples = [
+            (txn.description, txn.get_user(self._user_id).get_balance())
+            for txn in constituent_transactions
+        ]
+
+        return expense_tuples
+
+    def _get_constituent_transactions(
+        self, transactions: list[SwTransaction], payment: SwTransaction
+    ) -> list[SwTransaction] | None:
+        """Get a list of all the transactions that made up this payment, or None if they could not be found."""
+        preceding_payments = sorted(
+            (txn for txn in transactions if txn.payment and (txn.date < payment.date)),
+            key=lambda x: x.date,
+            reverse=True,
+        )
+
+        for preceding_payment in preceding_payments:
             constituent_transactions = [
                 txn
                 for txn in transactions
@@ -114,21 +125,27 @@ class Splitwise:
             payment_balance = payment.get_user(self._user_id).get_balance()
 
             if transaction_balance_sum + payment_balance == Decimal("0.00"):
-                print("Transaction totals match.")
-                break
+                return constituent_transactions
 
-            print(
+            self._logger.info(
                 f"Transaction totals don't match, trying next payment: {transaction_balance_sum}, {payment_balance}"
             )
 
-        included_payments = (txn for txn in constituent_transactions if txn.payment)
+        return None
+
+    def _remove_included_payments(self, transactions: list[SwTransaction]) -> None:
+        """Remove any payments that were one-off payments for a single expense.
+
+        Search for payments in the given list of transactions, find the corresponding expense, and remove both from the list.
+        """
+        included_payments = (txn for txn in transactions if txn.payment)
         for included_payment in included_payments:
             net_balance = included_payment.get_user(self._user_id).get_balance()
 
             # search for the expense that cancels this payment out
             matching_expenses = (
                 txn
-                for txn in constituent_transactions
+                for txn in transactions
                 if (txn.date < included_payment.date)
                 and (
                     txn.get_user(self._user_id).get_balance() + net_balance
@@ -137,21 +154,9 @@ class Splitwise:
             )
             [matching_expense] = matching_expenses
 
-            print("Found a matching payment and expense, removing them.")
-
-            # remove the payment and expense
-            self._remove_transaction(constituent_transactions, matching_expense["id"])
-            self._remove_transaction(constituent_transactions, included_payment["id"])
-
-        output = [
-            (txn["description"], txn.get_user(self._user_id).get_balance())
-            for txn in constituent_transactions
-        ]
-
-        # return those transactions as a list of amounts (positive or negative), and descriptions
-        print(output)
-
-        return output
+            self._logger.info("Found a matching payment and expense, removing them.")
+            self._remove_transaction(transactions, matching_expense.id)
+            self._remove_transaction(transactions, included_payment.id)
 
     def _request(self, url: str, params: dict = {}) -> dict:
         """Make a get request to the Splitwise API."""
@@ -178,7 +183,7 @@ class Splitwise:
             offset += len(transaction_response["expenses"])
             transactions_dicts.extend(transaction_response["expenses"])
 
-        transactions = [SwTransaction(x) for x in transactions_dicts]
+        transactions = [SwTransaction(**txn) for txn in transactions_dicts]
         if self._groups:
             transactions = [x for x in transactions if x.group_id in self._groups]
 

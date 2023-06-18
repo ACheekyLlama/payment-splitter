@@ -1,4 +1,5 @@
 """Module for interacting with the Pocketsmith API."""
+import logging
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -18,6 +19,7 @@ class PsTransaction(BaseModel):
     payee: str
     date: str
     amount: float
+    note: str | None
     labels: list[str]
     transaction_account: PsTransactionAccount
 
@@ -27,6 +29,9 @@ class PsTransaction(BaseModel):
     def get_amount(self) -> Decimal:
         return to_decimal(self.amount)
 
+    def __str__(self) -> str:
+        return str(self.dict(include={"id", "payee", "date", "amount"}))
+
 
 class Pocketsmith:
     """Class for interacting with the Pocketsmith API."""
@@ -34,22 +39,25 @@ class Pocketsmith:
     def __init__(self, key: str) -> None:
         self._key = key
 
+        self._logger = logging.getLogger("Pocketsmith")
+        self._logger.setLevel(logging.INFO)
+
     def get_settle_up_transactions(self) -> list[PsTransaction]:
         """Find and return the list of uncategorised settle-up transactions in Pocketsmith."""
-        user_dict = self._get_request("https://api.pocketsmith.com/v2/me")
+        user_dict = self._get_current_user()
         user_id = user_dict["id"]
 
-        transaction_dicts = self._get_request_paginated(
-            f"https://api.pocketsmith.com/v2/users/{user_id}/transactions",
+        transaction_dicts = self._get_transactions(
+            user_id,
             {"uncategorised": 1, "search": "splitwise"},
         )
         transactions = [
-            PsTransaction(txn)
+            PsTransaction(**txn)
             for txn in transaction_dicts
             if "Splitwise" in txn["labels"]
         ]
 
-        print(f"Found {len(transactions)} settle-up transactions.")
+        self._logger.info(f"Found {len(transactions)} settle-up transactions.")
 
         return transactions
 
@@ -57,7 +65,6 @@ class Pocketsmith:
         self,
         original_transaction: PsTransaction,
         new_transactions: list[tuple[str, Decimal]],
-        dry_run: bool = False,
     ) -> None:
         """Split up a pocketsmith transaction, according to the given new_transactions.
 
@@ -77,42 +84,39 @@ class Pocketsmith:
                     "note": "Created by payment-splitter",
                 }
 
-                print(f"Creating transaction: {ps_new_transaction}")
-
-                if not dry_run:
-                    response_transaction = self._post_request(
-                        f"https://api.pocketsmith.com/v2/transaction_accounts/{transaction_account}/transactions",
-                        ps_new_transaction,
-                    )
-                    created_transaction_ids.append(response_transaction["id"])
-
-            if not dry_run:
-                print(f"Deleting original transaction: {original_transaction}")
-                self._delete_request(
-                    f"https://api.pocketsmith.com/v2/transactions/{original_transaction.id}"
+                response_transaction = self._create_transaction(
+                    transaction_account,
+                    ps_new_transaction,
                 )
+                created_transaction_ids.append(response_transaction["id"])
+
+            self._delete_transaction(original_transaction.id)
+            self._logger.info(f"Split transaction into its constituents.")
         except Exception:
-            print("Error occurred while creating new transactions.")
+            self._logger.error("Error occurred while creating new transactions.")
             # rollback created transactions
             for created_transaction_id in created_transaction_ids:
-                self._delete_request(
-                    f"https://api.pocketsmith.com/v2/transactions/{created_transaction_id}"
-                )
+                self._delete_transaction(created_transaction_id)
+            self._logger.info("Rolled back all changes, no transactions were created.")
 
-    def _get_request(self, url: str, params: dict = {}) -> dict:
-        """Make a get request to the Pocketsmith API."""
+    def _get_current_user(self) -> dict:
+        """Get the current user from the Pocketsmith API."""
+        url = "https://api.pocketsmith.com/v2/me"
         headers = {"X-Developer-Key": self._key, "accept": "application/json"}
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
 
         return response.json()
 
-    def _get_request_paginated(self, url: str, params: dict = {}) -> list[dict]:
-        """Make a get request to the Pocketsmith API and collect the paginated results into a list."""
-        data = []
+    def _get_transactions(self, user_id: int, params: dict = {}) -> list[dict]:
+        """Get the list of transactions for the given user from the Pocketsmith API."""
+        url = f"https://api.pocketsmith.com/v2/users/{user_id}/transactions"
+        headers = {"X-Developer-Key": self._key, "accept": "application/json"}
 
+        data = []
         while url is not None:
-            headers = {"X-Developer-Key": self._key, "accept": "application/json"}
             response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
             data.extend(response.json())
 
             if "link" not in response.links:
@@ -122,16 +126,20 @@ class Pocketsmith:
 
         return data
 
-    def _post_request(self, url: str, data: dict) -> dict:
-        """Make a post request to the Pocketsmith API."""
+    def _create_transaction(
+        self, transaction_account: int, transaction_dict: dict
+    ) -> dict:
+        """Create a transaction in the given transaction account."""
+        url = f"https://api.pocketsmith.com/v2/transaction_accounts/{transaction_account}/transactions"
         headers = {"X-Developer-Key": self._key, "accept": "application/json"}
-        response = requests.post(url, headers=headers, data=data)
+        response = requests.post(url, headers=headers, data=transaction_dict)
         response.raise_for_status()
 
         return response.json()
 
-    def _delete_request(self, url: str) -> None:
-        """Make a delete request to the Pocketsmith API."""
+    def _delete_transaction(self, transaction_id: int) -> None:
+        """Delete the given transaction from Pocketsmith API."""
+        url = f"https://api.pocketsmith.com/v2/transactions/{transaction_id}"
         headers = {"X-Developer-Key": self._key, "accept": "application/json"}
         response = requests.delete(url, headers=headers)
         response.raise_for_status()
