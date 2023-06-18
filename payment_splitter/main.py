@@ -1,11 +1,6 @@
 """Main entrypoint module."""
-from datetime import timezone
-
-from dateutil.parser import isoparse
-
 from .pocketsmith import Pocketsmith
 from .splitwise import Splitwise
-from .util import to_decimal
 
 
 def main(
@@ -25,8 +20,8 @@ def main(
             f"Processing transaction: id: {settle_up_transaction['id']}, amount: {settle_up_transaction['amount']}"
         )
         sw_payment = splitwise.get_matching_payment(
-            to_decimal(settle_up_transaction["amount"]),
-            isoparse(settle_up_transaction["date"]).replace(tzinfo=timezone.utc),
+            settle_up_transaction.get_amount(),
+            settle_up_transaction.get_date(),
         )
 
         if sw_payment is None:
