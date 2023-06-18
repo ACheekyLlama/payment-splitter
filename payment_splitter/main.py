@@ -6,6 +6,7 @@ from .splitwise import Splitwise
 
 
 def main(
+    user_name: str,
     pocketsmith_key: str,
     splitwise_key: str,
     splitwise_groups: list,
@@ -20,6 +21,11 @@ def main(
     splitwise = Splitwise(splitwise_key, splitwise_groups)
 
     ps_settle_up_transactions = pocketsmith.get_settle_up_transactions()
+
+    if ps_settle_up_transactions:
+        logger.info(
+            f"Found {len(ps_settle_up_transactions)} settle-up transactions for user {user_name}."
+        )
 
     for settle_up_transaction in ps_settle_up_transactions:
         logger.info(f"Processing transaction: {settle_up_transaction}")

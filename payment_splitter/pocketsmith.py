@@ -57,8 +57,6 @@ class Pocketsmith:
             if "Splitwise" in txn["labels"]
         ]
 
-        self._logger.info(f"Found {len(transactions)} settle-up transactions.")
-
         return transactions
 
     def split_transaction(

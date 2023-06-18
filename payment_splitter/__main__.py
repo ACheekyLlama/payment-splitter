@@ -27,12 +27,13 @@ def parse_args() -> tuple[str, bool]:
     return (args["config-file"], args["dry_run"])
 
 
-def parse_config(config_file_path: str) -> tuple[str, str, list[int]]:
+def parse_config(config_file_path: str) -> tuple[str, str, str, list[int]]:
     try:
         with open(config_file_path, "r") as f:
             config = json.load(f)
 
             return (
+                config["name"],
                 config["pocketsmith_api_key"],
                 config["splitwise_api_key"],
                 config["splitwise_groups"],
@@ -46,5 +47,5 @@ def parse_config(config_file_path: str) -> tuple[str, str, list[int]]:
 
 
 config_file, dry_run = parse_args()
-pocketsmith_key, splitwise_key, splitwise_groups = parse_config(config_file)
-main(pocketsmith_key, splitwise_key, splitwise_groups, dry_run=dry_run)
+user_name, pocketsmith_key, splitwise_key, splitwise_groups = parse_config(config_file)
+main(user_name, pocketsmith_key, splitwise_key, splitwise_groups, dry_run=dry_run)

@@ -79,8 +79,8 @@ class Splitwise:
 
     def get_constituent_expenses(
         self, payment: SwTransaction
-    ) -> list[tuple[str, Decimal]]:
-        """Get a list of the expenses that make up the given payment. Returns them as tuples (description, amount)."""
+    ) -> list[tuple[str, Decimal]] | None:
+        """Get a list of the expenses that make up the given payment. Returns them as tuples (description, amount), or None if they could not be found."""
         transactions = [
             txn
             for txn in self._fetch_transactions()
@@ -90,6 +90,9 @@ class Splitwise:
         constituent_transactions = self._get_constituent_transactions(
             transactions, payment
         )
+
+        if constituent_transactions is None:
+            return None
 
         self._remove_included_payments(constituent_transactions)
 
@@ -152,7 +155,12 @@ class Splitwise:
                     == Decimal("0.00")
                 )
             )
-            [matching_expense] = matching_expenses
+
+            try:
+                [matching_expense] = matching_expenses
+            except ValueError as e:
+                self._logger.info(str(included_payment))
+                raise Exception("Could not find a matching expense for this payment.")
 
             self._logger.info("Found a matching payment and expense, removing them.")
             self._remove_transaction(transactions, matching_expense.id)
