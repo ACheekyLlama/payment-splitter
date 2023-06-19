@@ -1,8 +1,8 @@
 """Main entrypoint module."""
 import logging
 
-from .pocketsmith import Pocketsmith
-from .splitwise import Splitwise
+from .pocketsmith.service import PocketsmithService
+from .splitwise.service import SplitwiseService
 
 
 def main(
@@ -17,8 +17,8 @@ def main(
     logger = logging.getLogger("Main")
     logger.setLevel(logging.INFO)
 
-    pocketsmith = Pocketsmith(pocketsmith_key)
-    splitwise = Splitwise(splitwise_key, splitwise_groups)
+    pocketsmith = PocketsmithService.factory(pocketsmith_key)
+    splitwise = SplitwiseService(splitwise_key, splitwise_groups)
 
     ps_settle_up_transactions = pocketsmith.get_settle_up_transactions()
 
