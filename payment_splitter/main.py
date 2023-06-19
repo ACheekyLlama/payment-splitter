@@ -21,6 +21,7 @@ def main(
     splitwise = SplitwiseService(splitwise_key, splitwise_groups)
 
     ps_settle_up_transactions = pocketsmith.get_settle_up_transactions()
+    sw_transactions = splitwise.get_all_transactions()
 
     if ps_settle_up_transactions:
         logger.info(
@@ -31,6 +32,7 @@ def main(
         logger.info(f"Processing transaction: {settle_up_transaction}")
 
         sw_payment = splitwise.get_matching_payment(
+            sw_transactions,
             settle_up_transaction.get_amount(),
             settle_up_transaction.get_date(),
         )
@@ -52,4 +54,6 @@ def main(
         logger.info(f"Found constituent expenses: {constituent_expenses}")
 
         if not dry_run:
-            pocketsmith.split_transaction(settle_up_transaction, constituent_expenses)
+            pocketsmith.save_split_transactions(
+                settle_up_transaction, constituent_expenses
+            )

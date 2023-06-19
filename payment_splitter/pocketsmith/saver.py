@@ -1,24 +1,27 @@
+"""Module for saving Pocketsmith transactions."""
 import logging
 from decimal import Decimal
 
 import requests
 
-from payment_splitter.pocketsmith.model import PsTransaction
+from .model import PsTransaction
 
 
-class PsTransactionSplitter:
+class PsTransactionSaver:
+    """Class for saving newly-split Pocketsmith transactions."""
+
     def __init__(self, key: str) -> None:
         self._key = key
 
         self._logger = logging.getLogger("PsTransactionSplitter")
         self._logger.setLevel(logging.INFO)
 
-    def split_transaction(
+    def save_split_transactions(
         self,
         original_transaction: PsTransaction,
         new_transactions: list[tuple[str, Decimal]],
     ) -> None:
-        """Split up a pocketsmith transaction, according to the given new_transactions.
+        """Save the newly created pocketsmith transactions, and delete the original.
 
         original_transaction is the original transaction in pocketsmith format
         new_transactions is the list of new transactions in an intermediate format

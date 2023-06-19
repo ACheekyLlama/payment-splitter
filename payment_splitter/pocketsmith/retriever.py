@@ -1,3 +1,4 @@
+"""Module for retrieving transactions from the Pocketsmith API."""
 import logging
 
 import requests
@@ -6,6 +7,8 @@ from .model import PsTransaction
 
 
 class PsTransactionRetriever:
+    """Class for retrieving transactions from the Pocketsmith API."""
+
     def __init__(self, key: str) -> None:
         self._key = key
 
