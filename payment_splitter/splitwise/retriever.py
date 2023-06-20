@@ -3,16 +3,14 @@ import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-import requests
-
-from .client import PocketsmithClient
+from .client import SplitwiseClient
 from .model import SwTransaction
 
 
 class SwTransactionRetriever:
     """Class for retrieving transactions from the Splitwise API."""
 
-    def __init__(self, client: PocketsmithClient, groups: list = []) -> None:
+    def __init__(self, client: SplitwiseClient, groups: list[int] = []) -> None:
         self._client = client
         self._groups = groups
 
@@ -21,23 +19,16 @@ class SwTransactionRetriever:
 
     def get_all_transactions(self) -> list[SwTransaction]:
         """Fetch and return all transactions from the Splitwise API."""
-        headers = {"Authorization": f"Bearer {self._key}", "accept": "application/json"}
 
         transactions_dicts = []
         offset = 0
         while True:
-            transaction_response = requests.get(
-                "https://secure.splitwise.com/api/v3.0/get_expenses",
-                headers=headers,
-                params={"offset": offset},
-            )
-            transaction_response.raise_for_status()
-            response_dict = transaction_response.json()
+            response_transactions = self._client.get_transactions(offset)
 
-            if not response_dict["expenses"]:
+            if not response_transactions:
                 break
-            offset += len(response_dict["expenses"])
-            transactions_dicts.extend(response_dict["expenses"])
+            offset += len(response_transactions)
+            transactions_dicts.extend(response_transactions)
 
         transactions = [SwTransaction(**txn) for txn in transactions_dicts]
         if self._groups:

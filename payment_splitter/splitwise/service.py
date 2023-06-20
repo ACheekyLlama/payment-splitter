@@ -5,10 +5,10 @@ import logging
 from datetime import datetime
 from decimal import Decimal
 
-from payment_splitter.splitwise.retriever import SwTransactionRetriever
-from payment_splitter.splitwise.splitter import SwTransactionSplitter
-
+from .client import SplitwiseClient
 from .model import SwTransaction
+from .retriever import SwTransactionRetriever
+from .splitter import SwTransactionSplitter
 
 
 class SplitwiseService:
@@ -20,16 +20,15 @@ class SplitwiseService:
         self._retriever = retriever
         self._splitter = splitter
 
-        user = self._request("https://secure.splitwise.com/api/v3.0/get_current_user")
-        self._user_id = user["user"]["id"]
-
         self._logger = logging.getLogger("Splitwise")
         self._logger.setLevel(logging.INFO)
 
     @classmethod
-    def factory(cls, key: str) -> SplitwiseService:
-        retriever = SwTransactionRetriever(key)
-        splitter = SwTransactionSplitter()
+    def factory(cls, key: str, groups: list[int] = []) -> SplitwiseService:
+        """Factory method to create the Splitwise service."""
+        client = SplitwiseClient(key)
+        retriever = SwTransactionRetriever(client, groups)
+        splitter = SwTransactionSplitter(client)
         return cls(retriever, splitter)
 
     def get_all_transactions(self) -> list[SwTransaction]:

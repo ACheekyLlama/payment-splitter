@@ -2,13 +2,16 @@
 import logging
 from decimal import Decimal
 
+from .client import SplitwiseClient
 from .model import SwTransaction
 
 
 class SwTransactionSplitter:
     """Class for splitting a Splitwise payment into its constituent expenses."""
 
-    def __init__(self) -> None:
+    def __init__(self, client: SplitwiseClient) -> None:
+        self._client = client
+
         self._logger = logging.getLogger("SwTransactionSplitter")
         self._logger.setLevel(logging.INFO)
 
@@ -25,8 +28,9 @@ class SwTransactionSplitter:
 
         self._remove_included_payments(constituent_transactions)
 
+        user_id = self._client.get_user_id()
         expense_tuples = [
-            (txn.description, txn.get_user(self._user_id).get_balance())
+            (txn.description, txn.get_user(user_id).get_balance())
             for txn in constituent_transactions
         ]
 
@@ -37,6 +41,7 @@ class SwTransactionSplitter:
     ) -> list[SwTransaction] | None:
         """Get a list of all the transactions that made up this payment, or None if they could not be found."""
         transactions = [txn for txn in transactions if txn.group_id == payment.group_id]
+        user_id = self._client.get_user_id()
 
         preceding_payments = sorted(
             (txn for txn in transactions if txn.payment and (txn.date < payment.date)),
@@ -52,11 +57,10 @@ class SwTransactionSplitter:
             ]
 
             transaction_balances = (
-                txn.get_user(self._user_id).get_balance()
-                for txn in constituent_transactions
+                txn.get_user(user_id).get_balance() for txn in constituent_transactions
             )
             transaction_balance_sum = sum(transaction_balances)
-            payment_balance = payment.get_user(self._user_id).get_balance()
+            payment_balance = payment.get_user(user_id).get_balance()
 
             if transaction_balance_sum + payment_balance == Decimal("0.00"):
                 return constituent_transactions
@@ -72,9 +76,11 @@ class SwTransactionSplitter:
 
         Search for payments in the given list of transactions, find the corresponding expense, and remove both from the list.
         """
+        user_id = self._client.get_user_id()
+
         included_payments = (txn for txn in transactions if txn.payment)
         for included_payment in included_payments:
-            net_balance = included_payment.get_user(self._user_id).get_balance()
+            net_balance = included_payment.get_user(user_id).get_balance()
 
             # search for the expense that cancels this payment out
             matching_expenses = (
@@ -82,8 +88,7 @@ class SwTransactionSplitter:
                 for txn in transactions
                 if (txn.date < included_payment.date)
                 and (
-                    txn.get_user(self._user_id).get_balance() + net_balance
-                    == Decimal("0.00")
+                    txn.get_user(user_id).get_balance() + net_balance == Decimal("0.00")
                 )
             )
 
