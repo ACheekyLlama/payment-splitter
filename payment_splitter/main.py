@@ -22,6 +22,11 @@ def main(
 
     pocketsmith_transactions = pocketsmith.get_settle_up_transactions()
 
+    if pocketsmith_transactions:
+        logger.info(
+            f"Found {len(pocketsmith_transactions)} settle-up transactions for user {user_name}."
+        )
+
     for settle_up_transaction in pocketsmith_transactions:
         logger.info(f"Processing settle-up transaction: {settle_up_transaction}")
 
