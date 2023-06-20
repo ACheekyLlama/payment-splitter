@@ -28,7 +28,7 @@ class SplitwiseSplitter:
 
         self._remove_included_payments(constituent_transactions)
 
-        user_id = self._client.get_user_id()
+        user_id = self._client.get_user().id
         expense_tuples = [
             (txn.description, txn.get_user(user_id).get_balance())
             for txn in constituent_transactions
@@ -41,7 +41,7 @@ class SplitwiseSplitter:
     ) -> list[SwTransaction] | None:
         """Get a list of all the transactions that made up this payment, or None if they could not be found."""
         transactions = [txn for txn in transactions if txn.group_id == payment.group_id]
-        user_id = self._client.get_user_id()
+        user_id = self._client.get_user().id
 
         preceding_payments = sorted(
             (txn for txn in transactions if txn.payment and (txn.date < payment.date)),
@@ -76,7 +76,7 @@ class SplitwiseSplitter:
 
         Search for payments in the given list of transactions, find the corresponding expense, and remove both from the list.
         """
-        user_id = self._client.get_user_id()
+        user_id = self._client.get_user().id
 
         included_payments = (txn for txn in transactions if txn.payment)
         for included_payment in included_payments:

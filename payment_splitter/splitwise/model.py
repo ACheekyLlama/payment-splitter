@@ -8,6 +8,12 @@ from pydantic import BaseModel
 from ..util import to_decimal
 
 
+class SwUser(BaseModel):
+    """Model representing the current user returned by the Splitwise API."""
+
+    id: int
+
+
 class SwTransactionUser(BaseModel):
     """Model representing the user object inside a Splitwise transaction."""
 

@@ -21,7 +21,7 @@ class SplitwiseRetriever:
     def get_all_transactions(self) -> list[SwTransaction]:
         """Get all transactions for the current user from Splitwise."""
 
-        transactions_dicts = []
+        transactions: list[SwTransaction] = []
         offset = 0
         while True:
             response_transactions = self._client.get_transactions(offset)
@@ -29,11 +29,10 @@ class SplitwiseRetriever:
             if not response_transactions:
                 break
             offset += len(response_transactions)
-            transactions_dicts.extend(response_transactions)
+            transactions.extend(response_transactions)
 
-        transactions = [SwTransaction(**txn) for txn in transactions_dicts]
         if self._groups:
-            transactions = [x for x in transactions if x.group_id in self._groups]
+            transactions = [txn for txn in transactions if txn.group_id in self._groups]
 
         return transactions
 
@@ -55,7 +54,7 @@ class SplitwiseRetriever:
         self, amount: Decimal, timestamp: datetime
     ) -> Callable[[SwTransaction], bool]:
         """Wrapper for a function which checks if transactions match the given amount and timestamp."""
-        user_id = self._client.get_user_id()
+        user_id = self._client.get_user().id
 
         def is_matching(transaction: SwTransaction) -> bool:
             """Check if the given transaction is a payment and matches the given amount and timestamp."""

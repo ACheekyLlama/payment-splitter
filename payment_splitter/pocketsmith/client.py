@@ -28,7 +28,7 @@ class PocketsmithClient:
         url = f"https://api.pocketsmith.com/v2/users/{user_id}/transactions"
         headers = {"X-Developer-Key": self._key, "accept": "application/json"}
 
-        transaction_dicts = []
+        transaction_dicts: list[dict] = []
         while url is not None:
             response = requests.get(url, headers=headers, params=params)
             response.raise_for_status()
