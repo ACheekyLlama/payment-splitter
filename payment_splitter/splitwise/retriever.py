@@ -11,35 +11,20 @@ from .model import SwTransaction
 class SplitwiseRetriever:
     """Class for retrieving transactions from Splitwise."""
 
-    def __init__(self, client: SplitwiseClient, groups: list[int] = []) -> None:
+    def __init__(self, client: SplitwiseClient) -> None:
         self._client = client
-        self._groups = groups
 
         self._logger = logging.getLogger("SplitwiseRetriever")
         self._logger.setLevel(logging.INFO)
 
-    def get_all_transactions(self) -> list[SwTransaction]:
-        """Get all transactions for the current user from Splitwise."""
-
-        transactions: list[SwTransaction] = []
-        offset = 0
-        while True:
-            response_transactions = self._client.get_transactions(offset)
-
-            if not response_transactions:
-                break
-            offset += len(response_transactions)
-            transactions.extend(response_transactions)
-
-        if self._groups:
-            transactions = [txn for txn in transactions if txn.group_id in self._groups]
-
-        return transactions
-
     def get_matching_payment(
-        self, transactions: list[SwTransaction], amount: Decimal, timestamp: datetime
+        self, amount: Decimal, timestamp: datetime, groups: list[int] = []
     ) -> SwTransaction | None:
-        """Get the Splitwise payment from the list that matches the given amount and timestamp."""
+        """Get the Splitwise payment from the API that matches the given amount and timestamp, and is in one of the provided groups."""
+        transactions = self._client.get_all_transactions()
+        if groups:
+            transactions = [txn for txn in transactions if txn.group_id in groups]
+
         is_matching_payment = self._get_match_function(amount, timestamp)
 
         matching_payments = [txn for txn in transactions if is_matching_payment(txn)]
@@ -53,7 +38,7 @@ class SplitwiseRetriever:
     def _get_match_function(
         self, amount: Decimal, timestamp: datetime
     ) -> Callable[[SwTransaction], bool]:
-        """Wrapper for a function which checks if transactions match the given amount and timestamp."""
+        """Wrapper for a function which checks if a transaction is a payment and matches the given amount and timestamp."""
         user_id = self._client.get_user().id
 
         def is_matching(transaction: SwTransaction) -> bool:

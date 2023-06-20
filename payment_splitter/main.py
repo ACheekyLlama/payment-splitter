@@ -18,26 +18,17 @@ def main(
     logger.setLevel(logging.INFO)
 
     pocketsmith = PocketsmithService.factory(pocketsmith_key)
-    splitwise = SplitwiseService.factory(splitwise_key, splitwise_groups)
+    splitwise = SplitwiseService.factory(splitwise_key)
 
     pocketsmith_transactions = pocketsmith.get_settle_up_transactions()
 
-    if not pocketsmith_transactions:
-        return
-
-    logger.info(
-        f"Found {len(pocketsmith_transactions)} settle-up transactions for user {user_name}."
-    )
-
-    sw_transactions = splitwise.get_all_transactions()
-
     for settle_up_transaction in pocketsmith_transactions:
-        logger.info(f"Processing transaction: {settle_up_transaction}")
+        logger.info(f"Processing settle-up transaction: {settle_up_transaction}")
 
         sw_payment = splitwise.get_matching_payment(
-            sw_transactions,
             settle_up_transaction.get_amount(),
             settle_up_transaction.get_date(),
+            splitwise_groups,
         )
 
         if sw_payment is None:
@@ -46,9 +37,7 @@ def main(
 
         logger.info(f"Found matching splitwise payment: {sw_payment}")
 
-        constituent_expenses = splitwise.get_constituent_expenses(
-            sw_transactions, sw_payment
-        )
+        constituent_expenses = splitwise.get_constituent_expenses(sw_payment)
 
         if constituent_expenses is None:
             logger.warn(

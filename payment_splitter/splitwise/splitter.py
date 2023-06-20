@@ -16,12 +16,10 @@ class SplitwiseSplitter:
         self._logger.setLevel(logging.INFO)
 
     def get_constituent_expenses(
-        self, transactions: list[SwTransaction], payment: SwTransaction
+        self, payment: SwTransaction
     ) -> list[tuple[str, Decimal]] | None:
         """Get a list of the expenses that make up the given payment. Returns them as tuples (description, amount), or None if they could not be found."""
-        constituent_transactions = self._get_constituent_transactions(
-            transactions, payment
-        )
+        constituent_transactions = self._get_constituent_transactions(payment)
 
         if constituent_transactions is None:
             return None
@@ -37,10 +35,14 @@ class SplitwiseSplitter:
         return expense_tuples
 
     def _get_constituent_transactions(
-        self, transactions: list[SwTransaction], payment: SwTransaction
+        self, payment: SwTransaction
     ) -> list[SwTransaction] | None:
         """Get a list of all the transactions that made up this payment, or None if they could not be found."""
-        transactions = [txn for txn in transactions if txn.group_id == payment.group_id]
+        transactions = [
+            txn
+            for txn in self._client.get_all_transactions()
+            if txn.group_id == payment.group_id
+        ]
         user_id = self._client.get_user().id
 
         preceding_payments = sorted(
@@ -56,10 +58,9 @@ class SplitwiseSplitter:
                 if preceding_payment.date < txn.date < payment.date
             ]
 
-            transaction_balances = (
+            transaction_balance_sum = sum(
                 txn.get_user(user_id).get_balance() for txn in constituent_transactions
             )
-            transaction_balance_sum = sum(transaction_balances)
             payment_balance = payment.get_user(user_id).get_balance()
 
             if transaction_balance_sum + payment_balance == Decimal("0.00"):

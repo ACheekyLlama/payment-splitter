@@ -9,21 +9,34 @@ class SplitwiseClient:
     def __init__(self, key: str) -> None:
         self._key = key
 
+        self._transactions: list[SwTransaction] | None = None
         self._user: SwUser | None = None
 
-    def get_transactions(self, offset: int) -> list[SwTransaction]:
-        """Get transactions from the Splitwise API starting from the given offset."""
+    def get_all_transactions(self) -> list[SwTransaction]:
+        """Get all transactions from the Splitwise API, with caching."""
+        if self._transactions is not None:
+            return self._transactions
+
         headers = {"Authorization": f"Bearer {self._key}", "accept": "application/json"}
+        url = "https://secure.splitwise.com/api/v3.0/get_expenses"
 
-        response = requests.get(
-            "https://secure.splitwise.com/api/v3.0/get_expenses",
-            headers=headers,
-            params={"offset": offset},
-        )
-        response.raise_for_status()
-        response_dict = response.json()
+        transactions: list[SwTransaction] = []
+        offset = 0
+        while True:
+            response = requests.get(url=url, headers=headers, params={"offset": offset})
+            response.raise_for_status()
 
-        transactions = [SwTransaction(**txn) for txn in response_dict["expenses"]]
+            response_transactions = [
+                SwTransaction(**txn) for txn in response.json()["expenses"]
+            ]
+
+            if not response_transactions:
+                break
+
+            offset += len(response_transactions)
+            transactions.extend(response_transactions)
+
+        self._transactions = transactions
 
         return transactions
 
@@ -33,11 +46,10 @@ class SplitwiseClient:
             return self._user
 
         headers = {"Authorization": f"Bearer {self._key}", "accept": "application/json"}
+        url = "https://secure.splitwise.com/api/v3.0/get_current_user"
 
-        # TODO: error handling and data validation
-        response = requests.get(
-            "https://secure.splitwise.com/api/v3.0/get_current_user", headers=headers
-        )
+        # TODO: error handling
+        response = requests.get(url=url, headers=headers)
         response.raise_for_status()
         response_dict = response.json()
 
