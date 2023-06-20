@@ -9,11 +9,15 @@ This project is a simple integration between Pocketsmith and Splitwise, which sp
 The program will poll the provided Pocketsmith accounts, looking for transactions with the "Splitwise" label.
 When one is found, it will retrieve the list of expenses that made up that payment from Splitwise, and split the Pocketsmith transaction into those constituent transactions.
 
+## Installation
+
+- Requires Python >= 3.10
+- Install dependencies with `pip install -r requirements.txt`
+
 ## Usage
 
-- Compatible with Python >= 3.10
-- Install dependencies with `pip install -r requirements.txt`
-- Run with `python -m payment_splitter config.json [--dry-run]`
+- Add a "Splitwise" label to any uncategorised settle-up transactions in Pocketsmith that you would like to split.
+- Run the program with `python -m payment_splitter config.json [--dry-run]`
   - Configuration file (see `configs/config-example.json`)
     - `name`: Display name of the user, for logging.
     - `pocketsmith_api_key`: API key for the Pocketsmith user.
