@@ -1,5 +1,6 @@
 .venv/
 .vscode/
-data/
 **/__pycache__/
-*key.txt
+configs/*
+!configs/config-example.json
+data/

@@ -14,7 +14,7 @@ When one is found, it will retrieve the list of expenses that made up that payme
 - Compatible with Python >= 3.10
 - Install dependencies with `pip install -r requirements.txt`
 - Run with `python -m payment_splitter config.json [--dry-run]`
-  - Configuration file (see `config-example.json`)
+  - Configuration file (see `configs/config-example.json`)
     - `name`: Display name of the user, for logging.
     - `pocketsmith_api_key`: API key for the Pocketsmith user.
     - `splitwise_api_key`: API key for the Splitwise user.
