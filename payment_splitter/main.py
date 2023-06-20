@@ -20,15 +20,18 @@ def main(
     pocketsmith = PocketsmithService.factory(pocketsmith_key)
     splitwise = SplitwiseService.factory(splitwise_key, splitwise_groups)
 
-    ps_settle_up_transactions = pocketsmith.get_settle_up_transactions()
+    pocketsmith_transactions = pocketsmith.get_settle_up_transactions()
+
+    if not pocketsmith_transactions:
+        return
+
+    logger.info(
+        f"Found {len(pocketsmith_transactions)} settle-up transactions for user {user_name}."
+    )
+
     sw_transactions = splitwise.get_all_transactions()
 
-    if ps_settle_up_transactions:
-        logger.info(
-            f"Found {len(ps_settle_up_transactions)} settle-up transactions for user {user_name}."
-        )
-
-    for settle_up_transaction in ps_settle_up_transactions:
+    for settle_up_transaction in pocketsmith_transactions:
         logger.info(f"Processing transaction: {settle_up_transaction}")
 
         sw_payment = splitwise.get_matching_payment(

@@ -16,16 +16,14 @@ class PocketsmithRetriever:
 
     def get_settle_up_transactions(self) -> list[PsTransaction]:
         """Get a list of the uncategorised settle-up transactions in Pocketsmith."""
-        user_id = self._client.get_user_id()
+        user_id = self._client.get_user().id
 
-        transaction_dicts = self._client.get_transactions(
+        transactions = self._client.get_transactions(
             user_id,
             {"uncategorised": 1, "search": "splitwise"},
         )
-        transactions = [
-            PsTransaction(**txn)
-            for txn in transaction_dicts
-            if "Splitwise" in txn["labels"]
+        settle_up_transactions = [
+            txn for txn in transactions if "Splitwise" in txn.labels
         ]
 
-        return transactions
+        return settle_up_transactions

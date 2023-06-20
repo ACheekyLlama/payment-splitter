@@ -42,7 +42,7 @@ class PocketsmithSaver:
                     transaction_account,
                     ps_new_transaction,
                 )
-                created_transaction_ids.append(response_transaction["id"])
+                created_transaction_ids.append(response_transaction.id)
 
             self._client.delete_transaction(original_transaction.id)
             self._logger.info(f"Split transaction into its constituents.")

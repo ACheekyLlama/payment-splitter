@@ -1,6 +1,8 @@
 """Module for interacting with the Pocketsmith API."""
 import requests
 
+from .model import PsTransaction, PsUser
+
 
 class PocketsmithClient:
     """Client for interacting with the Pocketsmith API."""
@@ -8,46 +10,51 @@ class PocketsmithClient:
     def __init__(self, key: str) -> None:
         self._key = key
 
-    def get_user_id(self) -> int:
+    def get_user(self) -> PsUser:
         """Get the current user from the Pocketsmith API."""
         url = "https://api.pocketsmith.com/v2/me"
         headers = {"X-Developer-Key": self._key, "accept": "application/json"}
 
         response = requests.get(url, headers=headers)
         response.raise_for_status()
-        user = response.json()
+        user_dict = response.json()
 
-        return user["id"]
+        user = PsUser(**user_dict)
 
-    def get_transactions(self, user_id: int, params: dict = {}) -> list[dict]:
+        return user
+
+    def get_transactions(self, user_id: int, params: dict = {}) -> list[PsTransaction]:
         """Get the list of transactions for the given user from the Pocketsmith API."""
         url = f"https://api.pocketsmith.com/v2/users/{user_id}/transactions"
         headers = {"X-Developer-Key": self._key, "accept": "application/json"}
 
-        data = []
+        transaction_dicts = []
         while url is not None:
             response = requests.get(url, headers=headers, params=params)
             response.raise_for_status()
-            data.extend(response.json())
+            transaction_dicts.extend(response.json())
 
             if "link" not in response.links:
                 break
 
             url = response.links["next"]
 
-        return data
+        transactions = [PsTransaction(**txn) for txn in transaction_dicts]
+
+        return transactions
 
     def create_transaction(
         self, transaction_account: int, transaction_dict: dict
-    ) -> dict:
+    ) -> PsTransaction:
         """Create a transaction in the given transaction account using the Pocketsmith API."""
         url = f"https://api.pocketsmith.com/v2/transaction_accounts/{transaction_account}/transactions"
         headers = {"X-Developer-Key": self._key, "accept": "application/json"}
 
         response = requests.post(url, headers=headers, data=transaction_dict)
         response.raise_for_status()
+        response_dict = response.json()
 
-        return response.json()
+        return PsTransaction(**response_dict)
 
     def delete_transaction(self, transaction_id: int) -> None:
         """Delete the given transaction from the Pocketsmith API."""

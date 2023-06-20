@@ -8,6 +8,12 @@ from pydantic import BaseModel
 from ..util import to_decimal
 
 
+class PsUser(BaseModel):
+    """Model representing a user object returned from the Pocketsmith API."""
+
+    id: int
+
+
 class PsTransactionAccount(BaseModel):
     """Model representing a transaction account object returned from the Pocketsmith API."""
 
