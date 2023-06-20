@@ -6,13 +6,13 @@ from .client import SplitwiseClient
 from .model import SwTransaction
 
 
-class SwTransactionSplitter:
+class SplitwiseSplitter:
     """Class for splitting a Splitwise payment into its constituent expenses."""
 
     def __init__(self, client: SplitwiseClient) -> None:
         self._client = client
 
-        self._logger = logging.getLogger("SwTransactionSplitter")
+        self._logger = logging.getLogger("SplitwiseSplitter")
         self._logger.setLevel(logging.INFO)
 
     def get_constituent_expenses(

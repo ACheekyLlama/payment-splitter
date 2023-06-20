@@ -7,18 +7,18 @@ from .client import SplitwiseClient
 from .model import SwTransaction
 
 
-class SwTransactionRetriever:
-    """Class for retrieving transactions from the Splitwise API."""
+class SplitwiseRetriever:
+    """Class for retrieving transactions from Splitwise."""
 
     def __init__(self, client: SplitwiseClient, groups: list[int] = []) -> None:
         self._client = client
         self._groups = groups
 
-        self._logger = logging.getLogger("SwTransactionRetriever")
+        self._logger = logging.getLogger("SplitwiseRetriever")
         self._logger.setLevel(logging.INFO)
 
     def get_all_transactions(self) -> list[SwTransaction]:
-        """Fetch and return all transactions from the Splitwise API."""
+        """Get all transactions for the current user from Splitwise."""
 
         transactions_dicts = []
         offset = 0

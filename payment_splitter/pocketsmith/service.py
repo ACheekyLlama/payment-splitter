@@ -1,33 +1,35 @@
-"""Module for interacting with the Pocketsmith API."""
+"""Module for handling Pocketsmith transactions."""
 from __future__ import annotations
 
 import logging
 from decimal import Decimal
 
+from .client import PocketsmithClient
 from .model import PsTransaction
-from .retriever import PsTransactionRetriever
-from .saver import PsTransactionSaver
+from .retriever import PocketsmithRetriever
+from .saver import PocketsmithSaver
 
 
 class PocketsmithService:
-    """Service for interacting with the Pocketsmith API."""
+    """Service for handling Pocketsmith transactions."""
 
     def __init__(
         self,
-        retriever: PsTransactionRetriever,
-        saver: PsTransactionSaver,
+        retriever: PocketsmithRetriever,
+        saver: PocketsmithSaver,
     ) -> None:
         self._retriever = retriever
         self._saver = saver
 
-        self._logger = logging.getLogger("Pocketsmith")
+        self._logger = logging.getLogger("PocketsmithService")
         self._logger.setLevel(logging.INFO)
 
     @classmethod
     def factory(cls, key: str) -> PocketsmithService:
         """Factory method for creating the Pocketsmith service."""
-        retriever = PsTransactionRetriever(key)
-        splitter = PsTransactionSaver(key)
+        client = PocketsmithClient(key)
+        retriever = PocketsmithRetriever(client)
+        splitter = PocketsmithSaver(client)
 
         return cls(retriever, splitter)
 

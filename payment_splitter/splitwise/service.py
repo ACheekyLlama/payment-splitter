@@ -7,28 +7,28 @@ from decimal import Decimal
 
 from .client import SplitwiseClient
 from .model import SwTransaction
-from .retriever import SwTransactionRetriever
-from .splitter import SwTransactionSplitter
+from .retriever import SplitwiseRetriever
+from .splitter import SplitwiseSplitter
 
 
 class SplitwiseService:
     """Class for interacting with the Splitwise API."""
 
     def __init__(
-        self, retriever: SwTransactionRetriever, splitter: SwTransactionSplitter
+        self, retriever: SplitwiseRetriever, splitter: SplitwiseSplitter
     ) -> None:
         self._retriever = retriever
         self._splitter = splitter
 
-        self._logger = logging.getLogger("Splitwise")
+        self._logger = logging.getLogger("SplitwiseService")
         self._logger.setLevel(logging.INFO)
 
     @classmethod
     def factory(cls, key: str, groups: list[int] = []) -> SplitwiseService:
         """Factory method to create the Splitwise service."""
         client = SplitwiseClient(key)
-        retriever = SwTransactionRetriever(client, groups)
-        splitter = SwTransactionSplitter(client)
+        retriever = SplitwiseRetriever(client, groups)
+        splitter = SplitwiseSplitter(client)
         return cls(retriever, splitter)
 
     def get_all_transactions(self) -> list[SwTransaction]:
