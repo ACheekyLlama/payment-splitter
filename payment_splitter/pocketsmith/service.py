@@ -34,7 +34,7 @@ class PocketsmithService:
         return cls(retriever, splitter)
 
     def get_settle_up_transactions(self) -> list[PsTransaction]:
-        """Find and return the list of uncategorised settle-up transactions in Pocketsmith."""
+        """Get a list of the uncategorised settle-up transactions in Pocketsmith."""
         return self._retriever.get_settle_up_transactions()
 
     def save_split_transactions(
@@ -42,7 +42,7 @@ class PocketsmithService:
         original_transaction: PsTransaction,
         new_transactions: list[tuple[str, Decimal]],
     ) -> None:
-        """Split up a pocketsmith transaction, according to the given new_transactions.
+        """Save the newly created pocketsmith transactions, and delete the original.
 
         original_transaction is the original transaction in pocketsmith format
         new_transactions is the list of new transactions in an intermediate format

@@ -15,7 +15,7 @@ class PocketsmithRetriever:
         self._logger.setLevel(logging.INFO)
 
     def get_settle_up_transactions(self) -> list[PsTransaction]:
-        """Find and return the list of uncategorised settle-up transactions in Pocketsmith."""
+        """Get a list of the uncategorised settle-up transactions in Pocketsmith."""
         user_id = self._client.get_user_id()
 
         transaction_dicts = self._client.get_transactions(

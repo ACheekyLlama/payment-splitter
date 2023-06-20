@@ -40,7 +40,7 @@ class PocketsmithClient:
     def create_transaction(
         self, transaction_account: int, transaction_dict: dict
     ) -> dict:
-        """Create a transaction in the given transaction account."""
+        """Create a transaction in the given transaction account using the Pocketsmith API."""
         url = f"https://api.pocketsmith.com/v2/transaction_accounts/{transaction_account}/transactions"
         headers = {"X-Developer-Key": self._key, "accept": "application/json"}
 
@@ -50,7 +50,7 @@ class PocketsmithClient:
         return response.json()
 
     def delete_transaction(self, transaction_id: int) -> None:
-        """Delete the given transaction from Pocketsmith API."""
+        """Delete the given transaction from the Pocketsmith API."""
         url = f"https://api.pocketsmith.com/v2/transactions/{transaction_id}"
         headers = {"X-Developer-Key": self._key, "accept": "application/json"}
 
