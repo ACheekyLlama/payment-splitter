@@ -62,8 +62,15 @@ class PocketsmithClient:
         url = f"https://api.pocketsmith.com/v2/transaction_accounts/{transaction_account}/transactions"
         headers = {"X-Developer-Key": self._key, "accept": "application/json"}
 
-        response = requests.post(url, headers=headers, data=transaction_dict)
-        response.raise_for_status()
+        try:
+            response = requests.post(url, headers=headers, data=transaction_dict)
+            response.raise_for_status()
+        except requests.exceptions.ConnectionError:
+            self._logger.error(
+                "Connection error occurred while creating Pocketsmith transactions."
+            )
+            raise
+
         response_dict = response.json()
 
         return PsTransaction(**response_dict)
@@ -73,5 +80,11 @@ class PocketsmithClient:
         url = f"https://api.pocketsmith.com/v2/transactions/{transaction_id}"
         headers = {"X-Developer-Key": self._key, "accept": "application/json"}
 
-        response = requests.delete(url, headers=headers)
-        response.raise_for_status()
+        try:
+            response = requests.delete(url, headers=headers)
+            response.raise_for_status()
+        except requests.exceptions.ConnectionError:
+            self._logger.error(
+                "Connection error occurred while deleting Pocketsmith transactions."
+            )
+            raise
