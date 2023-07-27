@@ -1,5 +1,6 @@
 """Main entrypoint module."""
 import logging
+import sys
 
 from .pocketsmith.service import PocketsmithService
 from .splitwise.service import SplitwiseService
@@ -13,7 +14,11 @@ def main(
     dry_run: bool = False,
 ):
     """Run the payment splitter."""
-    logging.basicConfig()
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)-8s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        stream=sys.stdout,
+    )
     logger = logging.getLogger("Main")
     logger.setLevel(logging.INFO)
 

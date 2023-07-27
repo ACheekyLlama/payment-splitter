@@ -1,4 +1,6 @@
 """Module for interacting with the Pocketsmith API."""
+import logging
+
 import requests
 
 from .model import PsTransaction, PsUser
@@ -9,6 +11,9 @@ class PocketsmithClient:
 
     def __init__(self, key: str) -> None:
         self._key = key
+
+        self._logger = logging.getLogger("PocketsmithClient")
+        self._logger.setLevel(logging.INFO)
 
     def get_user(self) -> PsUser:
         """Get the current user from the Pocketsmith API."""
@@ -30,8 +35,15 @@ class PocketsmithClient:
 
         transaction_dicts: list[dict] = []
         while url is not None:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
+            try:
+                response = requests.get(url, headers=headers, params=params)
+                response.raise_for_status()
+            except requests.exceptions.ConnectionError:
+                self._logger.error(
+                    "Connection error while reading transactions from Pocketsmith."
+                )
+                raise
+
             transaction_dicts.extend(response.json())
 
             if "link" not in response.links:
