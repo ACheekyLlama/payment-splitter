@@ -42,7 +42,7 @@ class PocketsmithClient:
                 self._logger.error(
                     "Connection error while reading transactions from Pocketsmith."
                 )
-                raise
+                return []
 
             transaction_dicts.extend(response.json())
 
